@@ -4,7 +4,7 @@ AI-Powered Hardware Monitoring Assistant
 # ⬡ HardSense — AI 하드웨어 모니터링 비서
 ### 프로젝트 기획서 (캡스톤 디자인)
 
-> 작성자: 2101091 최윤식 | 날짜: 2026년 03월 24일
+날짜: 2026년 03월 24일
 
 ---
 
