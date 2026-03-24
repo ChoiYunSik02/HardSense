@@ -1,8 +1,10 @@
 # HardSense
 AI-Powered Hardware Monitoring Assistant
 
-# ⬡ CoreMind — AI 하드웨어 모니터링 비서
+# ⬡ HardSense — AI 하드웨어 모니터링 비서
 ### 프로젝트 기획서 (캡스톤 디자인)
+
+날짜: 2026년 03월 24일
 
 ---
 
@@ -10,7 +12,7 @@ AI-Powered Hardware Monitoring Assistant
 
 ### 1.1 프로젝트 명
 
-**CoreMind** — AI-Powered Hardware Monitoring Assistant
+**HardSense** — AI-Powered Hardware Monitoring Assistant
 
 ### 1.2 한 줄 정의
 
@@ -18,7 +20,7 @@ AI-Powered Hardware Monitoring Assistant
 
 ### 1.3 기존 소프트웨어와의 차이점
 
-| 구분 | RivaTuner / HWiNFO | **CoreMind** |
+| 구분 | RivaTuner / HWiNFO | **HardSense** |
 |------|-------------------|--------------|
 | 데이터 표시 | ✅ 수치만 표시 | ✅ 수치 + 의미 해석 |
 | AI 분석 | ❌ | ✅ 2단계 AI 구조 |
@@ -208,7 +210,7 @@ flowchart TD
 
 ```mermaid
 gantt
-    title CoreMind 개발 일정
+    title HardSense 개발 일정
     dateFormat  YYYY-MM-DD
     section Phase 1
     기본 모니터링 대시보드     :done,    p1, 2026-03-24, 7d
