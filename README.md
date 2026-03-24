@@ -4,7 +4,7 @@ AI-Powered Hardware Monitoring Assistant
 # ⬡ HardSense — AI 하드웨어 모니터링 비서
 ### 프로젝트 기획서 (캡스톤 디자인)
 
-날짜: 2026년 03월 24일
+> 작성자: 2101091 최윤식 | 날짜: 2026년 03월 24일
 
 ---
 
@@ -29,6 +29,7 @@ AI-Powered Hardware Monitoring Assistant
 | 벤치마크 예측 | ❌ | ✅ ML 기반 점수 예측 |
 | 언더볼팅 가이드 | ❌ | ✅ 실사용 데이터 기반 자동 계산 |
 | 상시 백그라운드 실행 | ❌ (게임 시만) | ✅ 항상 실행 |
+| FPS / 하위 1% FPS | ✅ (RTSS 전용) | ✅ (PresentMon + RTSS 이중 지원) |
 
 ---
 
@@ -46,6 +47,7 @@ AI를 하드웨어 모니터링에 접목하여:
 - 이상 징후를 **자동으로 감지하고 원인을 설명**해준다.
 - 며칠간의 데이터를 분석해 **언더볼팅 최적값을 제안**함으로써, 초보자도 안전하게 PC를 튜닝할 수 있게 한다.
 - **벤치마크 점수를 예측**하여 실제 성능이 기대치에 못 미칠 경우 원인을 분석해준다.
+- 게임 중 **FPS 및 하위 1% FPS를 실시간 표시**하여 프레임 드랍 원인을 하드웨어 데이터와 함께 분석해준다.
 
 ---
 
@@ -54,6 +56,7 @@ AI를 하드웨어 모니터링에 접목하여:
 ### 3.1 핵심 목표 (Must Have)
 
 - [x] CPU / GPU / RAM / 디스크 / 네트워크 실시간 모니터링 대시보드 구현
+- [x] FPS / 하위 1% FPS 실시간 표시 (PresentMon 기본 + RTSS 보조)
 - [x] 로컬 AI (Ollama) 기반 1차 이상 감지 및 자동 경고
 - [x] Claude API 기반 심층 원인 분석 및 해결책 제시
 - [x] 이상 감지 시 Windows 토스트 알림 발송
@@ -86,12 +89,15 @@ graph TD
         RAM["RAM\n사용량 · 클럭"]
         DISK["디스크\n읽기/쓰기 속도 · 용량"]
         NET["네트워크\n업로드/다운로드"]
+        FPS["FPS\n현재 FPS · 하위 1% FPS · 프레임타임"]
     end
 
     subgraph COLLECT["📡 데이터 수집 레이어 (Python)"]
         PSUTIL["psutil\nCPU · RAM · 디스크 · 네트워크"]
         PYNVML["pynvml\nGPU (NVIDIA)"]
         LHM["LibreHardwareMonitor\n전압 · 전력 · 팬RPM 상세값"]
+        PRESENTMON["PresentMon (기본)\nFPS · 하위 1% FPS · 프레임타임\nMicrosoft 공식 · 별도 설치 불필요"]
+        RTSS["RTSS 공유메모리 (보조)\nMSI Afterburner 설치 시 자동 활성화"]
     end
 
     subgraph STORAGE["🗄️ 저장 레이어"]
@@ -114,11 +120,16 @@ graph TD
         ALERT["이상 감지 알림 패널\n원인 분석 + 해결책 표시"]
         BENCH["벤치마크 예측 패널\n예측값 vs 실제값 비교"]
         UNDER["언더볼팅 가이드 패널\n최적값 + 단계별 안내"]
+        FPSPANEL["FPS 패널\n현재 FPS · 하위 1% FPS\n프레임타임 그래프"]
     end
 
     CPU & GPU & RAM & DISK & NET --> PSUTIL & PYNVML & LHM
+    FPS --> PRESENTMON
+    FPS --> RTSS
     PSUTIL & PYNVML & LHM --> SQLITE
+    PRESENTMON & RTSS --> SQLITE
     PSUTIL & PYNVML & LHM --> OLLAMA
+    PRESENTMON & RTSS --> OLLAMA
     SQLITE --> CLAUDE
     SQLITE --> ML
     OLLAMA -->|"이상 감지 시"| CLAUDE
@@ -127,7 +138,8 @@ graph TD
     CLAUDE --> UNDER
     ML --> BENCH
     PSUTIL & PYNVML & LHM --> DASH
-    DASH --- CHAT & ALERT & BENCH & UNDER
+    PRESENTMON & RTSS --> FPSPANEL
+    DASH --- CHAT & ALERT & BENCH & UNDER & FPSPANEL
 ```
 
 ---
@@ -206,7 +218,28 @@ flowchart TD
 
 ---
 
-## 5. 개발 일정 (Phase별)
+### 4.5 FPS 수집 흐름 (이중 방안)
+
+```mermaid
+flowchart TD
+    GAME["게임 실행 감지\n프로세스 모니터링"] --> CHECK{{"FPS 수집\n방법 선택"}}
+
+    CHECK -->|"기본 방법"| PM["PresentMon\nMicrosoft 공식 툴\nHardSense 앱에 동봉\n별도 설치 불필요"]
+    CHECK -->|"보조 방법"| RTSS["RTSS 공유메모리\nMSI Afterburner 설치 감지 시\n자동으로 전환 활성화"]
+
+    PM --> DATA["FPS 데이터 파싱\n현재 FPS\n하위 1% FPS\n프레임타임 ms"]
+    RTSS --> DATA
+
+    DATA --> SQLITE["SQLite 저장\n게임 세션별 FPS 이력"]
+    DATA --> DISPLAY["대시보드 FPS 패널\n실시간 표시"]
+    DATA --> AICHECK{{"FPS 드랍\n감지?"}}
+
+    AICHECK -->|"✅ 정상"| DISPLAY
+    AICHECK -->|"⚠️ 드랍 감지"| OLLAMA["Ollama 1차 분석\nGPU 병목? CPU 병목?\n온도 스로틀링?"]
+    OLLAMA --> ALERT["AI 알림\n프레임 드랍 원인 + 해결책"]
+```
+
+---
 
 ```mermaid
 gantt
@@ -243,6 +276,8 @@ graph LR
         SQ["SQLite"]
         OL["Ollama API"]
         CA["Claude API"]
+        PM["PresentMon\nFPS 수집 (기본)"]
+        RT["RTSS 공유메모리\nFPS 수집 (보조)"]
     end
 
     subgraph FE["Frontend"]
@@ -257,6 +292,7 @@ graph LR
     PY --> FA --> HTML
     FA --> AP
     PS & NV --> FA
+    PM & RT --> FA
     SK & SQ --> FA
     OL & CA --> FA
     FA --> WIN
@@ -270,6 +306,7 @@ graph LR
 - 먼지 쌓임, 팬 불량, 소프트웨어 충돌 등 **발열 원인을 조기에 감지**하여 하드웨어 수명 연장
 - 언더볼팅 초보자도 **안전하게 전압/전력 최적화**를 시도할 수 있는 가이드 제공
 - 벤치마크 측정 없이 **AI로 예측 점수를 확인**하고, 실제 성능 저하 원인을 파악
+- 게임 중 **FPS 드랍 발생 시 AI가 즉시 원인을 분석** — GPU 병목인지, CPU 병목인지, 온도 스로틀링인지 자동 판별
 
 ---
 
